@@ -1,3 +1,4 @@
+
 [![Contributors][contributors-shield]][contributors-url]
 [![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
@@ -17,13 +18,10 @@
 
   <p align="center">
     A ZSH plugin that captures history in a database
-
     <br />
     <a href="./README.md"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/stiliajohny/historikeeper">View Demo</a>
-    ·
     <a href="https://github.com/stiliajohny/historikeeper/issues/new?labels=i%3A+bug&template=1-bug-report.md">Report Bug</a>
     ·
     <a href="https://github.com/stiliajohny/historikeeper/issues/new?labels=i%3A+enhancement&template=2-feature-request.md">Request Feature</a>
@@ -53,29 +51,11 @@
 
 [![historikeeper Screen Shot][product-screenshot]](./.assets/screenshot.png)
 
-<!--
-There are many great README templates available on GitHub, however, I didn't find one that really suit my needs so I created this enhanced one. I want to create a README template so amazing that it'll be the last one you ever need.
-
-Here's why:
-
-- Your time should be focused on creating something amazing. A project that solves a problem and helps others
-- You shouldn't be doing the same tasks over and over like creating a README from scratch
-- You should element DRY principles to the rest of your life :smile:
-
-Of course, no one template will serve all projects since your needs may be different. So I'll be adding more in the near future. You may also suggest changes by forking this repo and creating a pull request or opening an issue.
-
-A list of commonly used resources that I find helpful are listed in the acknowledgements.
--->
-
 ### Built With
 
-<!--
-This section should list any major frameworks that you built your project using. Leave any add-ons/plugins for the acknowledgements section. Here are a few examples.
-
-- [Bootstrap](https://getbootstrap.com)
-- [JQuery](https://jquery.com)
-- [Laravel](https://laravel.com)
--->
+- [Zsh](https://www.zsh.org)
+- [PostgreSQL](https://www.postgresql.org)
+- [Docker](https://www.docker.com)
 
 ---
 
@@ -83,70 +63,72 @@ This section should list any major frameworks that you built your project using.
 
 ## Getting Started
 
-<!--
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
--->
-
 ### Prerequisites
 
-<!--
-
-This is an example of how to list things you need to use the software and how to install them.
-
-- npm
-
-```sh
-npm install npm@latest -g
-```
--->
+- Docker
+- PostgreSQL client (optional, for manual access to the database)
 
 ### Installation
 
-<!--
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
+1. **Clone the repo**
 
-```sh
-git clone https://github.com/your_username_/Project-Name.git
-```
+   ```sh
+   git clone https://github.com/stiliajohny/historikeeper.git
+   ```
 
-3. Install NPM packages
+2. **Deploy PostgreSQL with Docker**
 
-```sh
-npm install
-```
-
-4. Enter your API in `config.js`
-
-```JS
-const API_KEY = 'ENTER YOUR API';
-```
--->
-
----
-
-<!-- USAGE EXAMPLES -->
+   ```sh
+   docker pull postgres
+   docker run --name postgres-db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_DB=histori_keeper -p 5432:5432 -d postgres
+   ```
 
 ## Usage
 
-<!--
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+Type on terminal, check on the DB, the history is there 
 
-_For more examples, please refer to the [Documentation](https://example.com)_
--->
+Example of what is captured: 
+```shell
+johnstilia in ~/.config/oh-my-zsh/custom/plugins/historikeeper on master ● ● λ ls
+HistoriKeeper.plugin.zsh LICENSE.txt              README.md                _config.yml
+>--------------------------------------------------                                                                                                                                                                                                                                                                                                                                                                
+Last Command Details:
+Epoch Timestamp: 1721927239
+Timestamp: 2024-07-25T18:07:19+0100
+Command: ls
+Command Arguments: 
+Exit Code: 0
+Execution Time (milliseconds): 12
+Hostname: Johns-MacBook-Pro.local
+Username: johnstilia
+Output:
+HistoriKeeper.plugin.zsh
+LICENSE.txt
+README.md
+_config.yml
+IP Address: Johns-MacBook-Pro.local
+PPID: 58531
+TTY: /dev/ttys055
+Working Directory: /Users/johnstilia/.config/oh-my-zsh/custom/plugins/historikeeper
+Shell Type: /bin/zsh
+Session Start Time: 2024-07-25T18:07:17+0100
+Public IP Address: 152.37.89.249
+Public Hostname: 89.37.152.249.bcube.co.uk
+>--------------------------------------------------
+Toggling Variables:
+HISTORIKEEPER_PRINT_DETAILS: true
+HISTORIKEEPER_LOGTOPOSTGRES: true
+>--------------------------------------------------
+```
+
 
 ---
-
-<!-- ROADMAP -->
 
 ## Roadmap
 
 See the [open issues](https://github.com/stiliajohny/historikeeper/issues) for a list of proposed features (and known issues).
 
 ---
-
-<!-- CONTRIBUTING -->
 
 ## Contributing
 
@@ -160,25 +142,15 @@ Contributions are what make the open source community such an amazing place to b
 
 ---
 
-<!-- LICENSE -->
-
 ## License
 
 Distributed under the GPLv3 License. See `LICENSE` for more information.
-
-<!-- CONTACT -->
 
 ## Contact
 
 John Stilia - stilia.johny@gmail.com
 
-<!--
-Project Link: [https://github.com/your_username/repo_name](https://github.com/your_username/repo_name)
--->
-
 ---
-
-<!-- ACKNOWLEDGEMENTS -->
 
 ## Acknowledgements
 
