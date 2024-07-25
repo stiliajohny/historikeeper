@@ -16,7 +16,8 @@
   <h3 align="center">historikeeper</h3>
 
   <p align="center">
-    A XSH plugin that captures history in a database
+    A ZSH plugin that captures history in a database
+
     <br />
     <a href="./README.md"><strong>Explore the docs »</strong></a>
     <br />
