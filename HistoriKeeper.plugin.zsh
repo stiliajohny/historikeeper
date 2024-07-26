@@ -123,18 +123,11 @@ function capture_start_time_and_command() {
     COMMAND_ARGS="${@:2}"
 }
 
-# Function to capture command output
+# Function to capture command output and handle interactive commands
 function capture_command_output() {
-    exec {__stdout}>&1 {__stderr}>&2
-    LAST_COMMAND_OUTPUT=$({
-        eval "$1"
-    } 2>&1)
-
-    # Check if the command is waiting for user input
-    if [[ "$LAST_COMMAND_OUTPUT" == *"waiting for user input"* ]]; then
-        LAST_COMMAND_OUTPUT="Error: Command is waiting for user input."
-    fi
+    LAST_COMMAND_OUTPUT=$(script -q -c "$1" /dev/null)
 }
+
 # Function to print details of the last executed command
 function print_last_command_details() {
     if [[ -n $COMMAND_START_TIME && -n $LAST_COMMAND ]]; then
