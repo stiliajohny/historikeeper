@@ -24,9 +24,10 @@ BOLD_MAGENTA='\033[1;35m' # Bold Magenta
 BOLD_CYAN='\033[1;36m'    # Bold Cyan
 BOLD_WHITE='\033[1;37m'   # Bold White
 
-# Initialize the toggle variable for printing details
-HISTORIKEEPER_PRINT_DETAILS=true
-HISTORIKEEPER_LOGTOPOSTGRES=true
+# Check and initialize the toggle variables for printing details
+# and logging to PostgreSQL
+HISTORIKEEPER_PRINT_DETAILS=${HISTORIKEEPER_PRINT_DETAILS:-true}
+HISTORIKEEPER_LOGTOPOSTGRES=${HISTORIKEEPER_LOGTOPOSTGRES:-true}
 
 # PostgreSQL connection details
 PG_HOST="localhost"
@@ -48,8 +49,25 @@ function capture_additional_info() {
 
 # Function to capture the current public IP if the device is connected to the internet
 function capture_public_ip() {
-    PUBLIC_IP_ADDRESS=$(curl -s ipinfo.io/ip)
-    PUBLIC_HOSTNAME=$(curl -s ipinfo.io/hostname)
+    RESPONSE_IP=$(curl -s -w "%{http_code}" ipinfo.io/ip)
+    RESPONSE_IP_CODE="${RESPONSE_IP: -3}"
+    IP_VALUE="${RESPONSE_IP:0:-3}"
+
+    RESPONSE_HOSTNAME=$(curl -s -w "%{http_code}" ipinfo.io/hostname)
+    RESPONSE_HOSTNAME_CODE="${RESPONSE_HOSTNAME: -3}"
+    HOSTNAME_VALUE="${RESPONSE_HOSTNAME:0:-3}"
+
+    if [ "$RESPONSE_IP_CODE" -eq 200 ]; then
+        PUBLIC_IP_ADDRESS="$IP_VALUE"
+    else
+        PUBLIC_IP_ADDRESS="Error: Unable to fetch IP. API limit or network issue."
+    fi
+
+    if [ "$RESPONSE_HOSTNAME_CODE" -eq 200 ]; then
+        PUBLIC_HOSTNAME="$HOSTNAME_VALUE"
+    else
+        PUBLIC_HOSTNAME="Error: Unable to fetch hostname. API limit or network issue."
+    fi
 }
 
 # Initialize the additional info at the start of the session
