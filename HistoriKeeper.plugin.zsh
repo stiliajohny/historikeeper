@@ -123,9 +123,9 @@ function capture_start_time_and_command() {
     COMMAND_ARGS="${@:2}"
 }
 
-# Function to capture command output and handle interactive commands
 function capture_command_output() {
-    LAST_COMMAND_OUTPUT=$(script -q -c "$1" /dev/null)
+    LAST_COMMAND_OUTPUT="Not captured"
+
 }
 
 # Function to print details of the last executed command
