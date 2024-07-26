@@ -56,6 +56,7 @@
 - [Zsh](https://www.zsh.org)
 - [PostgreSQL](https://www.postgresql.org)
 - [Docker](https://www.docker.com)
+- [Python](https://www.python.org)
 
 ---
 
@@ -67,13 +68,15 @@
 
 - Docker
 - PostgreSQL client (optional, for manual access to the database)
+- Python 3.6+ 
+- `pip` (Python package installer)
 
 ### Installation
 
 1. **Clone the repo**
 
    ```sh
-   git clone https://github.com/stiliajohny/historikeeper.git
+   git clone https://github.com/stiliajohny/historikeeper.git $ZSH_CUSTOM/plugins/historikeeper
    ```
 
 2. **Deploy PostgreSQL with Docker**
@@ -83,20 +86,61 @@
    docker run --name postgres-db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_DB=histori_keeper -p 5432:5432 -d postgres
    ```
 
+3. **Install Python dependencies**
+
+   ```sh
+   pip install -r $ZSH_CUSTOM/plugins/historikeeper/requirements.txt
+   ```
+
+4. **Add the plugin to your .zshrc configuration**
+
+   ```sh
+   plugins=(... historikeeper)
+   ```
+
+5. **Set variables in your .zshrc**
+
+   ```sh
+   HISTORIKEEPER_PRINT_DETAILS=true
+   HISTORIKEEPER_LOGTOPOSTGRES=true
+   ```
+
+6. **Source your .zshrc to apply the changes**
+
+   ```sh
+   source ~/.zshrc
+   ```
+
+---
+
 ## Usage
 
-Type on terminal, check on the DB, the history is there 
+### Import existing history 
 
-Example of what is captured: 
+1. CD in the plugin folder 
+   ```bash
+   cd $ZSH_CUSTOM/plugins/historikeeper/
+   ```
+1. run the import command 
+   ```bash 
+   python3 ./parse_zsh_history.py -vvvv --input-file ~/.zsh_history --pg-host localhost --pg-port 5432 --pg-user postgres --pg-password mysecretpassword --pg-db histori_keeper
+   ```
+
+### Normal Plugin Usage
+The plugin captures each command run in your terminal and logs it to the PostgreSQL database if `HISTORIKEEPER_LOGTOPOSTGRES` is set to `true`. 
+
+You can view the details of the last command executed directly in your terminal if `HISTORIKEEPER_PRINT_DETAILS` is set to `true`.
+
+Example of what is captured:
 ```shell
 johnstilia in ~/.config/oh-my-zsh/custom/plugins/historikeeper on master ● ● λ ls
 HistoriKeeper.plugin.zsh LICENSE.txt              README.md                _config.yml
->--------------------------------------------------                                                                                                                                                                                                                                                                                                                                                                
+>--------------------------------------------------
 Last Command Details:
 Epoch Timestamp: 1721927239
 Timestamp: 2024-07-25T18:07:19+0100
 Command: ls
-Command Arguments: 
+Command Arguments:
 Exit Code: 0
 Execution Time (milliseconds): 12
 Hostname: Johns-MacBook-Pro.local
@@ -120,7 +164,6 @@ HISTORIKEEPER_PRINT_DETAILS: true
 HISTORIKEEPER_LOGTOPOSTGRES: true
 >--------------------------------------------------
 ```
-
 
 ---
 
