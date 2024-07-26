@@ -35,7 +35,6 @@ PG_USER="postgres"
 PG_DB="histori_keeper"
 PG_PASSWORD="mysecretpassword"
 
-
 # Function to capture session ID, IP address, PPID, TTY, working directory, and shell type
 function capture_additional_info() {
     SESSION_ID=$(uuidgen)
@@ -47,7 +46,7 @@ function capture_additional_info() {
     SESSION_START_TIME=$(date +"%Y-%m-%dT%H:%M:%S%z")
 }
 
-# function to capture the currentl public ip if the device is connected to the internet
+# Function to capture the current public IP if the device is connected to the internet
 function capture_public_ip() {
     PUBLIC_IP_ADDRESS=$(curl -s ipinfo.io/ip)
     PUBLIC_HOSTNAME=$(curl -s ipinfo.io/hostname)
@@ -77,7 +76,7 @@ function setup_database_and_table() {
             username TEXT NOT NULL,
             output TEXT,
             ip_address TEXT,
-            parrent_id INT,
+            parent_pid INT,
             tty TEXT,
             working_directory TEXT,
             shell_type TEXT,
@@ -93,7 +92,7 @@ function log_to_postgres() {
     if [[ $HISTORIKEEPER_LOGTOPOSTGRES == true ]]; then
         setup_database_and_table
         PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DB -c "
-        INSERT INTO command_log (session_id, epoch_timestamp, command, command_args, exit_code, execution_time, hostname, username, output, ip_address, parrent_id, tty, working_directory, shell_type, session_start_time, public_ip_address, public_hostname)
+        INSERT INTO command_log (session_id, epoch_timestamp, command, command_args, exit_code, execution_time, hostname, username, output, ip_address, parent_pid, tty, working_directory, shell_type, session_start_time, public_ip_address, public_hostname)
         VALUES ('$SESSION_ID', $LAST_COMMAND_TIMESTAMP, '$LAST_COMMAND', '$COMMAND_ARGS', $LAST_EXIT_CODE, $COMMAND_EXECUTION_TIME, '$HOSTNAME', '$USERNAME', '$COMMAND_OUTPUT', '$IP_ADDRESS', $PARENT_PID, '$TTY', '$WORKING_DIRECTORY', '$SHELL_TYPE', '$SESSION_START_TIME', '$PUBLIC_IP_ADDRESS', '$PUBLIC_HOSTNAME');
         "
     fi
@@ -103,8 +102,16 @@ function log_to_postgres() {
 function capture_start_time_and_command() {
     COMMAND_START_TIME=$EPOCHREALTIME
     LAST_COMMAND=$1
+    COMMAND_ARGS="${@:2}"
 }
 
+# Function to capture command output
+function capture_command_output() {
+    exec {__stdout}>&1 {__stderr}>&2
+    LAST_COMMAND_OUTPUT=$({
+        eval "$1"
+    } 2>&1)
+}
 
 # Function to print details of the last executed command
 function print_last_command_details() {
@@ -112,8 +119,8 @@ function print_last_command_details() {
         local LAST_COMMAND_TIMESTAMP=$EPOCHREALTIME
         local LAST_EXIT_CODE=$EXIT_CODE
 
-        # Capture command output
-        COMMAND_OUTPUT=$($LAST_COMMAND 2>&1)
+        # Capture the command output
+        COMMAND_OUTPUT="$LAST_COMMAND_OUTPUT"
 
         # Calculate the execution time and round to the nearest millisecond
         local COMMAND_EXECUTION_TIME=$(echo "($LAST_COMMAND_TIMESTAMP - $COMMAND_START_TIME) * 1000" | bc | awk '{printf "%.0f\n", $1}')
@@ -147,7 +154,7 @@ function print_last_command_details() {
             echo -e "${BOLD_MAGENTA}Username:${RESET} ${USERNAME}"
             echo -e "${BOLD_MAGENTA}Output:${RESET}\n${COMMAND_OUTPUT}"
             echo -e "${BOLD_MAGENTA}IP Address:${RESET} ${IP_ADDRESS}"
-            echo -e "${BOLD_MAGENTA}PPID:${RESET} ${PPID}"
+            echo -e "${BOLD_MAGENTA}Parent PID:${RESET} ${PARENT_PID}"
             echo -e "${BOLD_MAGENTA}TTY:${RESET} ${TTY}"
             echo -e "${BOLD_MAGENTA}Working Directory:${RESET} ${WORKING_DIRECTORY}"
             echo -e "${BOLD_MAGENTA}Shell Type:${RESET} ${SHELL_TYPE}"
@@ -168,9 +175,9 @@ function print_last_command_details() {
         # Reset variables to prevent double output
         COMMAND_START_TIME=""
         LAST_COMMAND=""
+        LAST_COMMAND_OUTPUT=""
     fi
 }
-
 
 # Capture the exit code of the last command
 function capture_exit_code() {
@@ -182,6 +189,11 @@ function main() {
     # Add capture_start_time_and_command to preexec_functions if not already added
     if [[ -z "${preexec_functions[(r)capture_start_time_and_command]}" ]]; then
         preexec_functions+=(capture_start_time_and_command)
+    fi
+
+    # Add capture_command_output to preexec_functions if not already added
+    if [[ -z "${preexec_functions[(r)capture_command_output]}" ]]; then
+        preexec_functions+=(capture_command_output)
     fi
 
     # Add capture_exit_code to precmd_functions if not already added
