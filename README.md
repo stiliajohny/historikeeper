@@ -55,6 +55,7 @@
 
 - [Zsh](https://www.zsh.org)
 - [PostgreSQL](https://www.postgresql.org)
+- [SQLite](https://www.sqlite.org)
 - [Docker](https://www.docker.com)
 - [Python](https://www.python.org)
 
@@ -68,6 +69,7 @@
 
 - Docker
 - PostgreSQL client (optional, for manual access to the database)
+- SQLite (optional, for local file-based logging)
 - Python 3.6+ 
 - `pip` (Python package installer)
 
@@ -76,10 +78,10 @@
 1. **Clone the repo**
 
    ```sh
-   git clone https://github.com/stiliajohny/historikeeper.git $ZSH_CUSTOM/plugins/historikeeper
+   git clone https://github.com/stiliajohny/historikeeper.git \$ZSH_CUSTOM/plugins/historikeeper
    ```
 
-2. **Deploy PostgreSQL with Docker**
+2. **Deploy PostgreSQL with Docker (optional if using PostgreSQL)**
 
    ```sh
    docker pull postgres
@@ -89,7 +91,7 @@
 3. **Install Python dependencies**
 
    ```sh
-   pip install -r $ZSH_CUSTOM/plugins/historikeeper/requirements.txt
+   pip install -r \$ZSH_CUSTOM/plugins/historikeeper/requirements.txt
    ```
 
 4. **Add the plugin to your .zshrc configuration**
@@ -102,7 +104,15 @@
 
    ```sh
    HISTORIKEEPER_PRINT_DETAILS=true
-   HISTORIKEEPER_LOGTOPOSTGRES=true
+   HISTORIKEEPER_LOG_METHOD="postgres" # Options: "postgres" or "sqlite"
+   # if postgress is used then set the following variables
+   PG_HOST=localhost
+   PG_PORT=5432
+   PG_USER=postgres
+   PG_DB=histori_keeper
+   PG_PASSWORD=mysecretpassword
+   # if sqlite is used then set the following variables
+   SQLITE_DB_PATH=~/.zsh_history.db
    ```
 
 6. **Source your .zshrc to apply the changes**
@@ -119,15 +129,15 @@
 
 1. CD in the plugin folder 
    ```bash
-   cd $ZSH_CUSTOM/plugins/historikeeper/
+   cd \$ZSH_CUSTOM/plugins/historikeeper/
    ```
-1. run the import command 
+2. Run the import command 
    ```bash 
    python3 ./parse_zsh_history.py -vvvv --input-file ~/.zsh_history --pg-host localhost --pg-port 5432 --pg-user postgres --pg-password mysecretpassword --pg-db histori_keeper
    ```
 
 ### Normal Plugin Usage
-The plugin captures each command run in your terminal and logs it to the PostgreSQL database if `HISTORIKEEPER_LOGTOPOSTGRES` is set to `true`. 
+The plugin captures each command run in your terminal and logs it to the specified database method (PostgreSQL or SQLite) based on the value of `HISTORIKEEPER_LOG_METHOD`. 
 
 You can view the details of the last command executed directly in your terminal if `HISTORIKEEPER_PRINT_DETAILS` is set to `true`.
 
@@ -161,7 +171,7 @@ Public Hostname: 89.37.152.249.bcube.co.uk
 >--------------------------------------------------
 Toggling Variables:
 HISTORIKEEPER_PRINT_DETAILS: true
-HISTORIKEEPER_LOGTOPOSTGRES: true
+HISTORIKEEPER_LOG_METHOD: postgres
 >--------------------------------------------------
 ```
 

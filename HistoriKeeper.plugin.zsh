@@ -25,16 +25,19 @@ BOLD_CYAN='\033[1;36m'    # Bold Cyan
 BOLD_WHITE='\033[1;37m'   # Bold White
 
 # Check and initialize the toggle variables for printing details
-# and logging to PostgreSQL
+# and logging method (PostgreSQL or SQLite)
 HISTORIKEEPER_PRINT_DETAILS=${HISTORIKEEPER_PRINT_DETAILS:-true}
-HISTORIKEEPER_LOGTOPOSTGRES=${HISTORIKEEPER_LOGTOPOSTGRES:-true}
+HISTORIKEEPER_LOG_METHOD=${HISTORIKEEPER_LOG_METHOD:-"postgres"} # Options: "postgres" or "sqlite"
 
-# PostgreSQL connection details
-PG_HOST="localhost"
-PG_PORT="5432"
-PG_USER="postgres"
-PG_DB="histori_keeper"
-PG_PASSWORD="mysecretpassword"
+# PostgreSQL connection details with default values
+PG_HOST=${PG_HOST:-"localhost"}
+PG_PORT=${PG_PORT:-"5432"}
+PG_USER=${PG_USER:-"postgres"}
+PG_DB=${PG_DB:-"histori_keeper"}
+PG_PASSWORD=${PG_PASSWORD:-"mysecretpassword"}
+
+# SQLite file path
+SQLITE_DB_PATH=${SQLITE_DB_PATH:-"$HOME/histori_keeper.sqlite"}
 
 # Function to capture session ID, IP address, PPID, TTY, working directory, and shell type
 function capture_additional_info() {
@@ -76,8 +79,8 @@ capture_additional_info
 # Capture the public IP address
 capture_public_ip
 
-# Function to create the database and table if they don't exist
-function setup_database_and_table() {
+# Function to create the PostgreSQL database and table if they don't exist
+function setup_database_and_table_postgres() {
     PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -c "CREATE DATABASE $PG_DB;" > /dev/null 2>&1
 
     PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DB -c "
@@ -107,12 +110,46 @@ function setup_database_and_table() {
 
 # Function to log details to PostgreSQL
 function log_to_postgres() {
-    if [[ $HISTORIKEEPER_LOGTOPOSTGRES == true ]]; then
-        setup_database_and_table
+    if [[ $HISTORIKEEPER_LOG_METHOD == "postgres" ]]; then
+        setup_database_and_table_postgres
         PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DB -c "
         INSERT INTO command_log (session_id, epoch_timestamp, command, command_args, exit_code, execution_time, hostname, username, output, ip_address, parent_pid, tty, working_directory, shell_type, session_start_time, public_ip_address, public_hostname)
         VALUES ('$SESSION_ID', $LAST_COMMAND_TIMESTAMP, '$LAST_COMMAND', '$COMMAND_ARGS', $LAST_EXIT_CODE, $COMMAND_EXECUTION_TIME, '$HOSTNAME', '$USERNAME', '$COMMAND_OUTPUT', '$IP_ADDRESS', $PARENT_PID, '$TTY', '$WORKING_DIRECTORY', '$SHELL_TYPE', '$SESSION_START_TIME', '$PUBLIC_IP_ADDRESS', '$PUBLIC_HOSTNAME');
-        "
+        " > /dev/null 2>&1
+    fi
+}
+
+# Function to create the SQLite database and table if they don't exist
+function setup_database_and_table_sqlite() {
+    sqlite3 $SQLITE_DB_PATH "CREATE TABLE IF NOT EXISTS command_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        timestamp TEXT DEFAULT (datetime('now')),
+        epoch_timestamp INTEGER NOT NULL,
+        command TEXT NOT NULL,
+        command_args TEXT,
+        exit_code INTEGER NOT NULL,
+        execution_time INTEGER NOT NULL,
+        hostname TEXT NOT NULL,
+        username TEXT NOT NULL,
+        output TEXT,
+        ip_address TEXT,
+        parent_pid INTEGER,
+        tty TEXT,
+        working_directory TEXT,
+        shell_type TEXT,
+        session_start_time TEXT,
+        public_ip_address TEXT,
+        public_hostname TEXT
+    );"
+}
+
+# Function to log details to SQLite
+function log_to_sqlite() {
+    if [[ $HISTORIKEEPER_LOG_METHOD == "sqlite" ]]; then
+        setup_database_and_table_sqlite
+        sqlite3 $SQLITE_DB_PATH "INSERT INTO command_log (session_id, epoch_timestamp, command, command_args, exit_code, execution_time, hostname, username, output, ip_address, parent_pid, tty, working_directory, shell_type, session_start_time, public_ip_address, public_hostname)
+        VALUES ('$SESSION_ID', $LAST_COMMAND_TIMESTAMP, '$LAST_COMMAND', '$COMMAND_ARGS', $LAST_EXIT_CODE, $COMMAND_EXECUTION_TIME, '$HOSTNAME', '$USERNAME', '$COMMAND_OUTPUT', '$IP_ADDRESS', $PARENT_PID, '$TTY', '$WORKING_DIRECTORY', '$SHELL_TYPE', '$SESSION_START_TIME', '$PUBLIC_IP_ADDRESS', '$PUBLIC_HOSTNAME');"
     fi
 }
 
@@ -125,7 +162,6 @@ function capture_start_time_and_command() {
 
 function capture_command_output() {
     LAST_COMMAND_OUTPUT="Not captured"
-
 }
 
 # Function to print details of the last executed command
@@ -180,12 +216,13 @@ function print_last_command_details() {
             echo -e "${BOLD_WHITE}>--------------------------------------------------${RESET}"
             echo -e "${BOLD_CYAN}Toggling Variables:${RESET}"
             echo -e "${GREEN}HISTORIKEEPER_PRINT_DETAILS:${RESET} ${HISTORIKEEPER_PRINT_DETAILS}"
-            echo -e "${GREEN}HISTORIKEEPER_LOGTOPOSTGRES:${RESET} ${HISTORIKEEPER_LOGTOPOSTGRES}"
+            echo -e "${GREEN}HISTORIKEEPER_LOG_METHOD:${RESET} ${HISTORIKEEPER_LOG_METHOD}"
             echo -e "${BOLD_WHITE}>--------------------------------------------------${RESET}"
         fi
 
-        # Log the details to PostgreSQL
+        # Log the details to PostgreSQL or SQLite
         log_to_postgres
+        log_to_sqlite
 
         # Reset variables to prevent double output
         COMMAND_START_TIME=""
@@ -199,8 +236,31 @@ function capture_exit_code() {
     EXIT_CODE=$?
 }
 
+# Function to check PostgreSQL connection
+function check_postgres_connection() {
+    PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DB -c "SELECT 1;" > /dev/null 2>&1
+    if [[ $? -ne 0 ]]; then
+        echo "Error: Unable to connect to PostgreSQL database."
+    fi
+}
+
+# Function to check SQLite file existence
+function check_sqlite_file() {
+    if [[ ! -f $SQLITE_DB_PATH ]]; then
+        echo "Creating SQLite database file at $SQLITE_DB_PATH."
+        sqlite3 $SQLITE_DB_PATH "CREATE TABLE IF NOT EXISTS command_log (id INTEGER PRIMARY KEY AUTOINCREMENT);" > /dev/null 2>&1
+    fi
+}
+
 # Main function to initialize the plugin
 function main() {
+    # Check for PostgreSQL or SQLite based on the logging method
+    if [[ $HISTORIKEEPER_LOG_METHOD == "postgres" ]]; then
+        check_postgres_connection
+    elif [[ $HISTORIKEEPER_LOG_METHOD == "sqlite" ]]; then
+        check_sqlite_file
+    fi
+
     # Add capture_start_time_and_command to preexec_functions if not already added
     if [[ -z "${preexec_functions[(r)capture_start_time_and_command]}" ]]; then
         preexec_functions+=(capture_start_time_and_command)
