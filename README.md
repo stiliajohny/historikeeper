@@ -11,7 +11,7 @@
 <br />
 <p align="center">
   <a href="https://github.com/stiliajohny/historikeeper">
-    <img src="https://raw.githubusercontent.com/stiliajohny/historikeeper/main/.assets/logo.png" alt="Main Logo" width="80" height="80">
+    <img src="https://raw.githubusercontent.com/stiliajohny/historykeeper/master/.assets/history-keeper.png" alt="Main Logo" width="80" height="80">
   </a>
 
   <h3 align="center">historikeeper</h3>
@@ -49,7 +49,7 @@
 
 ## About The Project
 
-[![historikeeper Screen Shot][product-screenshot]](./.assets/screenshot.png)
+<!-- [![historikeeper Screen Shot][product-screenshot]](./.assets/screenshot.png) -->
 
 ### Built With
 
