@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 import re
 import psycopg2
 from psycopg2 import sql
