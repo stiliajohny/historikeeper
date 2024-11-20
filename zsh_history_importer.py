@@ -13,30 +13,6 @@ from rich.panel import Panel
 from rich.progress import Progress, BarColumn, TextColumn
 
 
-
-def display_header(file_path, pg_host, pg_user, pg_db, line_count):
-    console = Console()
-    db_info = f"""
-    🗄️ Database Information:
-    - Host: {pg_host}
-    - User: {pg_user}
-    - Database: {pg_db}
-    - Password: {'*' * 8}
-    📂 File Information:
-    - Path: {file_path}
-    - Total Commands: {line_count}
-    """
-    console.print(
-        Panel(
-            db_info.strip(),
-            title="🔍 Zsh History Importer",
-            subtitle="Processing History Data",
-            expand=False,
-            border_style="bold green",
-        )
-    )
-
-
 def setup_logger(verbosity_count):
     levels = [logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
     verbosity_count = min(
@@ -96,25 +72,57 @@ def process_history_file(file_path, verbosity, pg_host, pg_user, pg_db):
             lines = file.readlines()
             total_lines = len(lines)
 
-        # Display header
-        display_header(file_path, pg_host, pg_user, pg_db, total_lines)
+        # Create Rich Console
+        console = Console()
+        max_width = console.size.width - 2  # Leave some margin
+        # Render the panel with formatted and colored text
+        db_info = f"""
+        [bold white]Host:[/] [green]{pg_host}[/]
+        [bold white]User:[/] [green]{pg_user}[/]
+        [bold white]Database:[/] [green]{pg_db}[/]
+        [bold white]Password:[/] [red]{'*' * len(args.pg_password)}[/]
 
-        if verbosity == 0:
-            # Use tqdm for progress bar when verbosity is 0
-            with tqdm(total=total_lines, desc="Processing history file", unit="line") as pbar:
-                for line in lines:
-                    entry = line.strip()
-                    if entry.startswith(": "):
-                        process_entry(entry)
-                    pbar.update(1)
-        else:
+        [bold cyan]📂 File Information:[/]
+        [bold white]Path:[/] [yellow]{file_path}[/]
+        [bold white]Total Commands:[/] [magenta]{total_lines}[/]
+        """
+        panel = Panel(
+            db_info.strip(),
+            title="[bold yellow]🔍 Zsh History Importer[/]",
+            subtitle="[bold green]Processing History Data[/]",
+            expand=False,
+            border_style="bold green",
+            width=min(max_width, 100),
+        )
+        with console.capture() as capture:
+            console.print(panel)
+        panel_output = capture.get()
+        panel_width = max(len(line) for line in panel_output.splitlines())
+
+        # Create Progress Bar with the same width as the panel
+        progress = Progress(
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(bar_width=panel_width - max_width + 140),  # Adjust for padding
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TextColumn("{task.completed}/{task.total} lines"),
+            console=console,
+        )
+
+        task_id = progress.add_task("Processing History File", total=total_lines)
+
+        # Display the panel again for the user
+        console.print(panel)
+
+        # Render the progress bar and process the file
+        with progress:
             for line in lines:
                 entry = line.strip()
                 if entry.startswith(": "):
                     process_entry(entry)
+                progress.advance(task_id)
+
     except FileNotFoundError:
         logger.error(f"File not found: {file_path}")
-
 
 def process_entry(entry):
     epoch_time, exit_code, command = parse_zsh_history_line(entry)
