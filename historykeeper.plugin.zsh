@@ -79,34 +79,48 @@ capture_additional_info
 # Capture the public IP address
 capture_public_ip
 
-# Function to create the PostgreSQL database and table if they don't exist
 function setup_database_and_table_postgres() {
-    PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -c "CREATE DATABASE $PG_DB;" > /dev/null 2>&1
+    # Create the database if it doesn't exist
+    PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d postgres -c "
+    DO \$\$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '$PG_DB') THEN
+            PERFORM pg_catalog.pg_create_physical_replica('$PG_DB');
+        END IF;
+    END
+    \$\$;" > /dev/null 2>&1
 
+    # Ensure the schema exists (defaults to public)
     PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DB -c "
-        CREATE TABLE IF NOT EXISTS command_log (
-            id SERIAL PRIMARY KEY,
-            session_id UUID NOT NULL,
-            timestamp TIMESTAMP WITH TIME ZONE DEFAULT current_timestamp,
-            epoch_timestamp BIGINT NOT NULL,
-            command TEXT NOT NULL,
-            command_args TEXT,
-            exit_code INT NOT NULL,
-            execution_time INT NOT NULL,
-            hostname TEXT NOT NULL,
-            username TEXT NOT NULL,
-            output TEXT,
-            ip_address TEXT,
-            parent_pid INT,
-            tty TEXT,
-            working_directory TEXT,
-            shell_type TEXT,
-            session_start_time TIMESTAMP WITH TIME ZONE,
-            public_ip_address TEXT,
-            public_hostname TEXT
-        );
+    CREATE SCHEMA IF NOT EXISTS public;
+    " > /dev/null 2>&1
+
+    # Create the table in the public schema if it doesn't exist
+    PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DB -c "
+    CREATE TABLE IF NOT EXISTS public.command_log (
+        id SERIAL PRIMARY KEY,
+        session_id UUID NOT NULL,
+        timestamp TIMESTAMP WITH TIME ZONE DEFAULT current_timestamp,
+        epoch_timestamp BIGINT NOT NULL,
+        command TEXT NOT NULL,
+        command_args TEXT,
+        exit_code INT NOT NULL,
+        execution_time INT NOT NULL,
+        hostname TEXT NOT NULL,
+        username TEXT NOT NULL,
+        output TEXT,
+        ip_address TEXT,
+        parent_pid INT,
+        tty TEXT,
+        working_directory TEXT,
+        shell_type TEXT,
+        session_start_time TIMESTAMP WITH TIME ZONE,
+        public_ip_address TEXT,
+        public_hostname TEXT
+    );
     " > /dev/null 2>&1
 }
+
 
 # Function to log details to PostgreSQL
 function log_to_postgres() {
@@ -284,3 +298,8 @@ function main() {
 
 # Call the main function to initialize the plugin
 main
+
+
+# Add a Zsh hook to call the function after each command
+autoload -U add-zsh-hook
+add-zsh-hook preexec main
