@@ -7,6 +7,34 @@ import uuid
 import requests
 import logging
 import argparse
+from tqdm import tqdm
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import Progress, BarColumn, TextColumn
+
+
+
+def display_header(file_path, pg_host, pg_user, pg_db, line_count):
+    console = Console()
+    db_info = f"""
+    🗄️ Database Information:
+    - Host: {pg_host}
+    - User: {pg_user}
+    - Database: {pg_db}
+    - Password: {'*' * 8}
+    📂 File Information:
+    - Path: {file_path}
+    - Total Commands: {line_count}
+    """
+    console.print(
+        Panel(
+            db_info.strip(),
+            title="🔍 Zsh History Importer",
+            subtitle="Processing History Data",
+            expand=False,
+            border_style="bold green",
+        )
+    )
 
 
 def setup_logger(verbosity_count):
@@ -61,26 +89,37 @@ def parse_zsh_history_line(line):
     return None, None, None
 
 
-def process_history_file(file_path):
+def process_history_file(file_path, verbosity, pg_host, pg_user, pg_db):
     logger.info(f"Processing history file: {file_path}")
     try:
         with open(file_path, "r") as file:
-            for line in file:
-                logger.debug(f"Reading line: {line.strip()}")
+            lines = file.readlines()
+            total_lines = len(lines)
+
+        # Display header
+        display_header(file_path, pg_host, pg_user, pg_db, total_lines)
+
+        if verbosity == 0:
+            # Use tqdm for progress bar when verbosity is 0
+            with tqdm(total=total_lines, desc="Processing history file", unit="line") as pbar:
+                for line in lines:
+                    entry = line.strip()
+                    if entry.startswith(": "):
+                        process_entry(entry)
+                    pbar.update(1)
+        else:
+            for line in lines:
                 entry = line.strip()
                 if entry.startswith(": "):
-                    logger.debug(f"Processing entry: {entry}")
                     process_entry(entry)
     except FileNotFoundError:
         logger.error(f"File not found: {file_path}")
 
 
 def process_entry(entry):
-    logger.debug(f"Processing entry: {entry}")
     epoch_time, exit_code, command = parse_zsh_history_line(entry)
     if epoch_time is not None:
         try:
-            # Get all prerequisites before inserting into DB
             session_id = str(uuid.uuid4())  # Generate a unique session_id
             execution_time = 0  # For historical data, we assume execution_time as 0
             hostname = os.uname().nodename
@@ -112,7 +151,8 @@ def process_entry(entry):
                 public_ip_address,
                 public_hostname,
             )
-            logger.info(f"Successfully inserted command: {command.strip()}")
+            if logger.isEnabledFor(logging.INFO):
+                logger.info(f"Successfully inserted command: {command.strip()}")
         except Exception as e:
             logger.error(f"Error inserting command: {command.strip()}, Error: {e}")
     else:
@@ -309,5 +349,7 @@ if __name__ == "__main__":
         args.pg_host, args.pg_port, args.pg_user, args.pg_password, args.pg_db
     )
     logger.info(f"History file path: {args.input_file}")
-    process_history_file(args.input_file)
+    process_history_file(
+        args.input_file, args.verbose, args.pg_host, args.pg_user, args.pg_db
+    )
     logger.info("Script finished")
