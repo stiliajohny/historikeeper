@@ -126,6 +126,7 @@ def process_history_file(file_path, verbosity, pg_host, pg_user, pg_db):
     except FileNotFoundError:
         logger.error(f"File not found: {file_path}")
 
+
 def process_entry(entry):
     epoch_time, exit_code, command = parse_zsh_history_line(entry)
     if epoch_time is not None:
@@ -197,16 +198,16 @@ def provision_db_and_table(pg_host, pg_port, pg_user, pg_password, pg_db):
     cursor.execute(
         """
     CREATE TABLE IF NOT EXISTS command_log (
-        id SERIAL PRIMARY KEY,
-        session_id UUID NOT NULL,
+        id SERIAL,
+        session_id UUID,
         timestamp TIMESTAMP WITH TIME ZONE DEFAULT current_timestamp,
-        epoch_timestamp BIGINT NOT NULL,
-        command TEXT NOT NULL,
+        epoch_timestamp BIGINT,
+        command TEXT,
         command_args TEXT,
-        exit_code INT NOT NULL,
-        execution_time INT NOT NULL,
-        hostname TEXT NOT NULL,
-        username TEXT NOT NULL,
+        exit_code INT,
+        execution_time INT,
+        hostname TEXT,
+        username TEXT,
         output TEXT,
         ip_address TEXT,
         parent_pid INT,
@@ -215,8 +216,7 @@ def provision_db_and_table(pg_host, pg_port, pg_user, pg_password, pg_db):
         shell_type TEXT,
         session_start_time TIMESTAMP WITH TIME ZONE,
         public_ip_address TEXT,
-        public_hostname TEXT,
-        UNIQUE (epoch_timestamp, command)
+        public_hostname TEXT
     );
     """
     )
@@ -248,25 +248,29 @@ def insert_into_db(
     logger.debug(
         f"Inserting into DB - epoch_time: {epoch_time}, exit_code: {exit_code}, command: {command}"
     )
-    connection = psycopg2.connect(
-        host=args.pg_host,
-        port=args.pg_port,
-        user=args.pg_user,
-        password=args.pg_password,
-        dbname=args.pg_db,
-    )
-    cursor = connection.cursor()
-
-    # Insert or ignore if exists
-    insert_query = sql.SQL(
-        """
-        INSERT INTO command_log (session_id, epoch_timestamp, command, command_args, exit_code, execution_time, hostname, username, output, ip_address, parent_pid, tty, working_directory, shell_type, session_start_time, public_ip_address, public_hostname)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (epoch_timestamp, command) DO NOTHING
-    """
-    )
-
     try:
+        connection = psycopg2.connect(
+            host=args.pg_host,
+            port=args.pg_port,
+            user=args.pg_user,
+            password=args.pg_password,
+            dbname=args.pg_db,
+        )
+        cursor = connection.cursor()
+
+        # SQL Query
+        insert_query = sql.SQL(
+            """
+            INSERT INTO command_log (
+                session_id, epoch_timestamp, command, command_args, exit_code, execution_time, hostname,
+                username, output, ip_address, parent_pid, tty, working_directory, shell_type, session_start_time,
+                public_ip_address, public_hostname
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+        )
+
+        # Execute query
         cursor.execute(
             insert_query,
             (
@@ -289,13 +293,20 @@ def insert_into_db(
                 public_hostname,
             ),
         )
+
+        # Commit changes
         connection.commit()
-        logger.debug(f"Inserted command into database: {command.strip()}")
+        logger.info(f"Data successfully inserted: {command}")
+
     except psycopg2.Error as e:
-        logger.error(f"Database error: {e}")
+        logger.error(f"Database error during insert: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error during insert: {e}")
     finally:
-        cursor.close()
-        connection.close()
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
 
 
 if __name__ == "__main__":
@@ -345,7 +356,7 @@ if __name__ == "__main__":
         "--pg-db",
         action="store",
         type=str,
-        default="histori_keeper",
+        default="historykeeper",
         help="PostgreSQL database name.",
     )
 

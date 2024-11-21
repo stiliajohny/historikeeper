@@ -33,11 +33,11 @@ HISTORIKEEPER_LOG_METHOD=${HISTORIKEEPER_LOG_METHOD:-"postgres"} # Options: "pos
 PG_HOST=${PG_HOST:-"localhost"}
 PG_PORT=${PG_PORT:-"5432"}
 PG_USER=${PG_USER:-"postgres"}
-PG_DB=${PG_DB:-"histori_keeper"}
+PG_DB=${PG_DB:-"historykeeper"}
 PG_PASSWORD=${PG_PASSWORD:-"mysecretpassword"}
 
 # SQLite file path
-SQLITE_DB_PATH=${SQLITE_DB_PATH:-"$HOME/histori_keeper.sqlite"}
+SQLITE_DB_PATH=${SQLITE_DB_PATH:-"$HOME/historykeeper.sqlite"}
 
 # Function to capture session ID, IP address, PPID, TTY, working directory, and shell type
 function capture_additional_info() {
@@ -80,6 +80,8 @@ capture_additional_info
 capture_public_ip
 
 function setup_database_and_table_postgres() {
+    echo "Setting up PostgreSQL database and table..."
+
     # Create the database if it doesn't exist
     PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d postgres -c "
     DO \$\$
@@ -95,19 +97,18 @@ function setup_database_and_table_postgres() {
     CREATE SCHEMA IF NOT EXISTS public;
     " > /dev/null 2>&1
 
-    # Create the table in the public schema if it doesn't exist
     PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DB -c "
     CREATE TABLE IF NOT EXISTS public.command_log (
-        id SERIAL PRIMARY KEY,
-        session_id UUID NOT NULL,
+        id SERIAL,
+        session_id UUID,
         timestamp TIMESTAMP WITH TIME ZONE DEFAULT current_timestamp,
-        epoch_timestamp BIGINT NOT NULL,
-        command TEXT NOT NULL,
+        epoch_timestamp BIGINT,
+        command TEXT,
         command_args TEXT,
-        exit_code INT NOT NULL,
-        execution_time INT NOT NULL,
-        hostname TEXT NOT NULL,
-        username TEXT NOT NULL,
+        exit_code INT,
+        execution_time INT,
+        hostname TEXT,
+        username TEXT,
         output TEXT,
         ip_address TEXT,
         parent_pid INT,
@@ -135,27 +136,29 @@ function log_to_postgres() {
 
 # Function to create the SQLite database and table if they don't exist
 function setup_database_and_table_sqlite() {
-    sqlite3 $SQLITE_DB_PATH "CREATE TABLE IF NOT EXISTS command_log (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        session_id TEXT NOT NULL,
-        timestamp TEXT DEFAULT (datetime('now')),
-        epoch_timestamp INTEGER NOT NULL,
-        command TEXT NOT NULL,
+    sqlite3 $SQLITE_DB_PATH "
+    CREATE TABLE IF NOT EXISTS public.command_log (
+        id SERIAL,
+        session_id UUID,
+        timestamp TIMESTAMP WITH TIME ZONE DEFAULT current_timestamp,
+        epoch_timestamp BIGINT,
+        command TEXT,
         command_args TEXT,
-        exit_code INTEGER NOT NULL,
-        execution_time INTEGER NOT NULL,
-        hostname TEXT NOT NULL,
-        username TEXT NOT NULL,
+        exit_code INT,
+        execution_time INT,
+        hostname TEXT,
+        username TEXT,
         output TEXT,
         ip_address TEXT,
-        parent_pid INTEGER,
+        parent_pid INT,
         tty TEXT,
         working_directory TEXT,
         shell_type TEXT,
-        session_start_time TEXT,
+        session_start_time TIMESTAMP WITH TIME ZONE,
         public_ip_address TEXT,
         public_hostname TEXT
-    );"
+    );
+    " > /dev/null 2>&1
 }
 
 # Function to log details to SQLite

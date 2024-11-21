@@ -85,7 +85,7 @@
 
    ```sh
    docker pull postgres
-   docker run --name postgres-db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_DB=histori_keeper -p 5432:5432 -d postgres
+   docker run --name postgres-db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_DB=historykeeper -p 5432:5432 -d postgres
    ```
 
 3. **Install Python dependencies**
@@ -109,7 +109,7 @@
    PG_HOST=localhost
    PG_PORT=5432
    PG_USER=postgres
-   PG_DB=histori_keeper
+   PG_DB=historykeeper
    PG_PASSWORD=mysecretpassword
    # if sqlite is used then set the following variables
    SQLITE_DB_PATH=~/.zsh_history.db
@@ -133,7 +133,7 @@
    ```
 2. Run the import command 
    ```bash 
-   python3 ./parse_zsh_history.py -vvvv --input-file ~/.zsh_history --pg-host localhost --pg-port 5432 --pg-user postgres --pg-password mysecretpassword --pg-db histori_keeper
+   python3 ./parse_zsh_history.py -vvvv --input-file ~/.zsh_history --pg-host localhost --pg-port 5432 --pg-user postgres --pg-password mysecretpassword --pg-db historykeeper
    ```
 
 ### Normal Plugin Usage
