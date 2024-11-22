@@ -80,26 +80,29 @@ capture_additional_info
 capture_public_ip
 
 function setup_database_and_table_postgres() {
-    echo "Setting up PostgreSQL database and table..."
 
-    # Create the database if it doesn't exist
-    PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d postgres -c "
-    DO \$\$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '$PG_DB') THEN
-            PERFORM pg_catalog.pg_create_physical_replica('$PG_DB');
-        END IF;
-    END
-    \$\$;" > /dev/null 2>&1
+    # Check if the database exists and create it if it doesn't
+    DB_EXISTS=$(PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -tAc "SELECT 1 FROM pg_database WHERE datname = '$PG_DB';")
+    if [[ "$DB_EXISTS" != "1" ]]; then
+        echo "Database $PG_DB does not exist. Creating it..."
+        PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d postgres -c "CREATE DATABASE $PG_DB;" > /dev/null 2>&1
+        if [[ $? -ne 0 ]]; then
+            echo "Error: Unable to create database $PG_DB. Check your permissions."
+            return 1
+        fi
+    else
+        # echo "Database $PG_DB already exists."
+    fi
 
     # Ensure the schema exists (defaults to public)
     PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DB -c "
     CREATE SCHEMA IF NOT EXISTS public;
     " > /dev/null 2>&1
 
+    # Create the command_log table if it doesn't exist
     PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -p $PG_PORT -U $PG_USER -d $PG_DB -c "
     CREATE TABLE IF NOT EXISTS public.command_log (
-        id SERIAL,
+        id SERIAL PRIMARY KEY,
         session_id UUID,
         timestamp TIMESTAMP WITH TIME ZONE DEFAULT current_timestamp,
         epoch_timestamp BIGINT,
@@ -120,7 +123,10 @@ function setup_database_and_table_postgres() {
         public_hostname TEXT
     );
     " > /dev/null 2>&1
+
 }
+
+
 
 
 # Function to log details to PostgreSQL
